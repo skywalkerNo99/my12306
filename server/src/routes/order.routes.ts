@@ -7,7 +7,8 @@
  */
 import type { FastifyInstance, FastifyPluginCallback } from 'fastify';
 import { z } from 'zod';
-import { RailwayAccountRepo, TasksRepo, PlansRepo, PassengersRepo } from '../db/repo.js';
+import { RailwayAccountRepo, TasksRepo, PlansRepo, PassengersRepo, PlanDatesRepo, PlanDateSkipsRepo } from '../db/repo.js';
+import { existingTicket } from '../bot/existing-ticket.js';
 import { verifiedOrderResult } from '../bot/order-result.js';
 import { currentUser } from './auth.routes.js';
 import { getContext } from '../bot/session.js';
@@ -35,6 +36,16 @@ const cache = new Map<string, CacheEntry>();
 
 export function repairTaskResults(userId: string, orders: OrderRow[]): void {
   const passengers = PassengersRepo.list(userId);
+  for (const task of TasksRepo.listFailed(userId)) {
+    const plan = PlansRepo.get(task.planId);
+    if (!plan || plan.userId !== userId || plan.status === 'deleted' || PlanDateSkipsRepo.has(plan.id, task.travelDate)) continue;
+    const selected = plan.passengerIds.map(id => passengers.find(p => p.id === id));
+    if (!selected.length || selected.some(p => !p)) continue;
+    const result = existingTicket({ ...plan, trainDate: task.travelDate, passengers: selected as typeof passengers }, orders);
+    if (!result) continue;
+    TasksRepo.update(task.id, { status: 'success', result: { ...result }, trainNumber: result.trainCode, error: null, finishedAt: new Date().toISOString() });
+    PlanDatesRepo.markDone(plan.id, task.travelDate);
+  }
   for (const task of TasksRepo.listSuccessful(userId)) {
     const plan = PlansRepo.get(task.planId);
     if (!plan || plan.userId !== userId) continue;

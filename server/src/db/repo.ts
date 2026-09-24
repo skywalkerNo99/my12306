@@ -394,6 +394,9 @@ export const TasksRepo = {
           finished_at = ?, updated_at = datetime('now')
       WHERE status IN ('running', 'queued')`).run(new Date().toISOString()).changes;
   },
+  listFailed(userId: string): Task[] {
+    return (getDb().prepare("SELECT * FROM tasks WHERE user_id = ? AND status = 'failed'").all(userId) as Record<string, unknown>[]).map(rowToTask);
+  },
   listSuccessful(userId: string): Task[] {
     return (getDb().prepare("SELECT * FROM tasks WHERE user_id = ? AND status = 'success' AND result IS NOT NULL").all(userId) as Record<string, unknown>[]).map(rowToTask);
   },

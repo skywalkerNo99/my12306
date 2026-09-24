@@ -281,10 +281,12 @@ export async function queryOrders(context: BrowserContext, onPersonalError?: (me
 
     const map = new Map<string, AccumOrder>();
     let anyOk = false;
+    let completedOk = false;
 
     // 1) 已完成订单先入表（已支付/已出票）——POST 分页查询，列表在 OrderDTODataList
     try {
-      let list = await fetchCompletedOrders(page);
+      let list = await fetchCompletedOrders(page, 90, true);
+      completedOk = true;
       try { if (onPersonalError) list = mergePersonalOrders(list, await fetchPersonalOrders(context)); }
       catch (error) {
         const message = error instanceof Error ? error.message : '本人车票同步失败';
@@ -313,6 +315,7 @@ export async function queryOrders(context: BrowserContext, onPersonalError?: (me
 
     if (!anyOk) throw new Error('12306 订单查询失败（未完成与已完成接口均无响应，可能登录已失效）');
     if (!incompleteOk) throw new Error('未完成订单查询未确认');
+    if (!completedOk) throw new Error('已完成订单查询未确认，暂不判断是否需要购票');
 
     const rows = groupJourneys([...map.values()].map(toRow));
     rows.sort((a, b) => {

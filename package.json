@@ -27,7 +27,7 @@
     "desktop:dist:signed": "npm --prefix desktop run dist:signed",
     "test:plan-status": "node --import tsx --test server/src/__test__/plan-status.test.ts server/src/__test__/task-recovery.test.ts server/src/__test__/plan-skip.test.ts server/src/__test__/cancel-order.test.ts",
     "test:desktop-transport": "node --import tsx --test server/src/__test__/desktop-transport.test.ts server/src/__test__/api-post.test.ts desktop/scripts/transport.test.cjs",
-    "test:seat-result": "node --import tsx --test server/src/__test__/seat-result.test.ts server/src/__test__/order-price.test.ts server/src/__test__/personal-orders.test.ts server/src/__test__/reconcile.test.ts",
+    "test:seat-result": "node --import tsx --test server/src/__test__/seat-result.test.ts server/src/__test__/order-price.test.ts server/src/__test__/personal-orders.test.ts server/src/__test__/existing-ticket.test.ts server/src/__test__/reconcile.test.ts",
     "test:notification-network": "node --import tsx --test server/src/__test__/notification-network.test.ts"
   },
   "engines": {

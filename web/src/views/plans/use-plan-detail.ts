@@ -131,7 +131,7 @@ export function usePlanDetail() {
       if (detailPlan.value?.id !== id || version !== detailRequestVersion) return;
       detailNow.value = new Date();
       detailRows.value = rows;
-      if (!quiet && loggedIn.value && rows.some(row => row.task?.status === 'success')) {
+      if (!quiet && loggedIn.value && rows.some(row => row.task?.status === 'success' || row.task?.status === 'failed')) {
         // Refresh payment status and repair legacy seat summaries without purchasing.
         try {
           await ordersApi.list();

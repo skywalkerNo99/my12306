@@ -21,7 +21,8 @@ import { URLS, SEAT_NAMES } from './constants.js';
 import { Logger } from '../logger.js';
 import { queryTrains, seatCount } from './tickets.js';
 import { queryPurchasedTickets } from './reconcile.js';
-import { parseCnTimestamp } from './orders.js';
+import { existingTicket } from './existing-ticket.js';
+import { queryOrders, parseCnTimestamp } from './orders.js';
 import { submittedSeatNames } from './seat-result.js';
 import type { Passenger, TrainInfo, TrainSegment } from '../types.js';
 
@@ -159,36 +160,17 @@ function pickSeat(train: TrainInfo, params: PurchaseParams): { code: string; nam
  * 下单流程自身也会被服务端拦截（点预订后不跳转），不会重复成交。
  */
 interface OrderCheck {
-  /** 查重命中：已购同车次 */
-  duplicated?: { orderNo: string; paid: boolean; payLimitTs: number | null };
   /** 拦截型冲突：账户存在其他未支付订单，新车票买不了 */
   blockingUnpaid?: { orderNo: string; date: string; trainCode: string };
 }
 
-function sameSegment(key: string, day: string, code: string, from: string, to: string): boolean {
-  const [d = '', c = '', fromStation = '', toStation = ''] = key.split('|');
-  return d.slice(0, 8) === day && c === code && fromStation === from && toStation === to;
-}
-
-async function checkOrders(
-  context: BrowserContext,
-  trainDate: string,
-  trainCode: string,
-  fromStation: string,
-  toStation: string,
-): Promise<OrderCheck | null> {
+async function checkOrders(context: BrowserContext): Promise<OrderCheck | null> {
   const purchased = await queryPurchasedTickets(context);
   if (!purchased) return null;
-  const day = trainDate.replace(/\D/g, '').slice(0, 8);
-  const code = trainCode.replace(/\s/g, '').toUpperCase();
-  const from = fromStation.trim();
-  const to = toStation.trim();
-  const hit = [...purchased.entries()].find(([k]) => sameSegment(k, day, code, from, to));
-  if (hit) return { duplicated: { orderNo: hit[1].orderNo, paid: hit[1].status === 'paid', payLimitTs: hit[1].payLimitTs } };
-  // 12306 只允许一个未支付订单。同车次的另一段（同车接续）不是重复票，不能在这里放行成已购。
+  // 精确已购匹配在查余票前完成，这里阻止剩余的未支付订单冲突。
   for (const [k, v] of purchased) {
     if (v.status !== 'unpaid') continue;
-    if (sameSegment(k, day, code, from, to)) continue;
+
     const [d, c] = k.split('|');
     return { blockingUnpaid: { orderNo: v.orderNo, date: d.slice(0, 8), trainCode: c } };
   }
@@ -293,6 +275,10 @@ export async function purchaseTicket(context: BrowserContext, params: PurchasePa
   const names = params.passengers.map((p) => p.name);
   const page = await context.newPage();
   try {
+    // 已购核对先于余票判断：已有票即完成，售罄不应掩盖已购事实。
+    const owned = await queryOrders(context, message => logger.warn('购票前本人车票未完整同步', { message }));
+    const existing = existingTicket(params, owned);
+    if (existing) return existing;
     // 1) 查询余票，选车
     const trains = await queryTrains(context, {
       trainDate: params.trainDate,
@@ -320,23 +306,7 @@ export async function purchaseTicket(context: BrowserContext, params: PurchasePa
     // 1.5) 查重 + 未支付订单冲突检测
     //   - 同日同车次已购 → 跳过下单，当日计划标记完成
     //   - 存在其他日期的未支付订单 → 12306 拦截新订单，必须先处理掉
-    const orderCheck = await checkOrders(context, params.trainDate, train.trainCode, train.fromStation, train.toStation);
-    if (orderCheck?.duplicated) {
-      const dup = orderCheck.duplicated;
-      logger.info('已存在同车次已购车票，跳过下单', { train: train.trainCode, orderNo: dup.orderNo, paid: dup.paid, payLimitTs: dup.payLimitTs });
-      return {
-        ok: true,
-        duplicated: true,
-        paid: dup.paid,
-        trainCode: train.trainCode,
-        passengers: names,
-        orderNo: dup.orderNo,
-        seatInfo: dup.paid ? '已购（已支付）' : '已购（未支付）',
-        // 查重命中未支付订单时，支付截止时间同样要带回，调度器据此设支付到期定时器
-        payDeadlineTs: dup.payLimitTs ?? undefined,
-        payDeadline: dup.payLimitTs ? new Date(dup.payLimitTs).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : undefined,
-      };
-    }
+    const orderCheck = await checkOrders(context);
     if (orderCheck?.blockingUnpaid) {
       const b = orderCheck.blockingUnpaid;
       logger.warn('账户存在未支付订单，新订单被 12306 拦截', { train: train.trainCode, blockingOrder: b.orderNo, blockingDate: b.date, blockingTrain: b.trainCode });
