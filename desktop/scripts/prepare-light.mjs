@@ -1,0 +1,10 @@
+import { cpSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const output = path.join(root, 'light-app');
+rmSync(output, { recursive: true, force: true }); mkdirSync(output);
+cpSync(path.join(root, 'light'), path.join(output, 'main'), { recursive: true });
+for (const [from, to] of [['src/window-mode.cjs', 'window-mode.cjs'], ['assets/icon.png', 'icon.png']]) cpSync(path.join(root, from), path.join(output, 'main', to));
+const { version } = JSON.parse(readFileSync(path.join(root, 'app/package.json')));
+writeFileSync(path.join(output, 'package.json'), JSON.stringify({ name: 'my12306-light', version, description: 'my12306 远程轻客户端', author: 'my12306', main: 'main/main.cjs' }, null, 2));

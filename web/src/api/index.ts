@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export const http = axios.create({
-  baseURL: '/api',
+  baseURL: typeof document === 'undefined' ? '/api' : new URL('api', document.baseURI).pathname,
   timeout: 30000,
   // XHR rejects custom schemes; Electron's protocol handler supports Fetch.
   adapter: typeof location !== 'undefined' && location.protocol === 'my12306:' ? 'fetch' : undefined,
@@ -257,7 +257,7 @@ export class WsClient {
 
   constructor() {
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-    this.url = `${proto}//${location.host}/ws`;
+    this.url = `${proto}//${location.host}${new URL('ws', document.baseURI).pathname}`;
   }
 
   connect(handlers: {

@@ -37,3 +37,8 @@ desktop/app/server/
 desktop/app/web/
 desktop/.cache/
 desktop/release/
+
+desktop/light-app/
+desktop/light-release/
+desktop/delivery/
+deploy/validation/

@@ -148,3 +148,19 @@ node --import tsx server/src/__test__/ui-fixture.ts
 自动回归测试使用固定日历、独立临时数据库和模拟通知 / 订单响应；桌面冒烟测试也使用隔离数据，不执行真实购票或取消订单。测试范围见 [TESTING.md](TESTING.md)。
 
 请遵守 12306 的使用规则；自动化不会付款，支付与订单确认仍由用户在 12306 完成。
+
+### 远程服务与 Light 客户端
+
+支持在服务器运行购票后台，桌面只连接远程服务。Light 安装包名称包含 `light`，不含本地后端、SQLite 或 Playwright；退出客户端不影响服务器购票。普通安装包继续支持本机独立运行。
+
+Light 首次启动填写 HTTPS 服务地址（例如 `https://etl-workflow.atominnolab.com:4200/my12306/`），如公网入口要求认证，填写原入口账号密码，再登录 my12306 管理台。菜单支持连接设置、后台运行和开机自动后台启动。入口密码不写入配置文件。
+
+[fd62 / Nginx 部署说明](deploy/README.md)。网关根路径为入口页，Prefect 使用 `/prefect/`，my12306 使用 `/my12306/`。
+
+```sh
+node desktop/scripts/prepare-light.mjs
+cd desktop
+MY12306_SIGNING=unsigned node node_modules/electron-builder/cli.js --config electron-builder-light.cjs --publish never
+```
+
+Light 产物位于 `desktop/light-release/`。桌面流水线同时构建普通版和 Light 版，发布到同一个 Release。

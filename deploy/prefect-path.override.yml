@@ -1,0 +1,6 @@
+services:
+  prefect-server:
+    ports: !reset []
+    environment:
+      PREFECT_SERVER_UI_SERVE_BASE: /prefect
+      PREFECT_SERVER_UI_API_URL: https://etl-workflow.atominnolab.com:4200/prefect/api

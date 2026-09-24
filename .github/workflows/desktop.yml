@@ -36,12 +36,13 @@ jobs:
             package-lock.json
             desktop/package-lock.json
             desktop/app/package-lock.json
-      - run: npm ci
+      - run: npm ci --ignore-scripts
       - run: npm test
       - run: npm run desktop:install
       - run: npm run desktop:prepare
       - run: npm --prefix desktop run smoke
       - run: npm --prefix desktop run test:signing
+      - run: node --test desktop/scripts/light.test.cjs
       - run: npm --prefix desktop run test:window
       - if: runner.os == 'macOS'
         run: npm --prefix desktop run test:quarantine
@@ -66,6 +67,22 @@ jobs:
       - if: runner.os == 'macOS' && env.DESKTOP_SIGNING == 'unsigned'
         run: npm --prefix desktop run bundle:macos
       - run: node desktop/scripts/stage-release.mjs
+      - name: Build lightweight remote client
+        shell: bash
+        env:
+          MY12306_SIGNING: unsigned
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: |
+          node desktop/scripts/prepare-light.mjs
+          cd desktop
+          node node_modules/electron-builder/cli.js --config electron-builder-light.cjs --publish never
+      - if: runner.os == 'macOS'
+        name: Bundle lightweight client
+        shell: bash
+        env:
+          MY12306_LIGHT: '1'
+        run: node desktop/scripts/bundle-macos.mjs desktop/light-release/*.dmg
+      - run: node desktop/scripts/deliver-light.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: my12306-${{ runner.os }}-${{ matrix.arch }}-${{ env.DESKTOP_SIGNING }}
@@ -94,7 +111,7 @@ jobs:
           cd delivery
           for checksum in *.sha256; do sha256sum -c "$checksum"; done
           count=$(find . -maxdepth 1 -type f ! -name '*.sha256' | wc -l)
-          test "$count" -eq 3
+          test "$count" -eq 6
           cd ..
           version=$(node -p "require('./desktop/app/package.json').version")
           if [[ "$GITHUB_REF" == refs/tags/desktop-v* ]]; then
@@ -102,7 +119,7 @@ jobs:
           else
             tag="desktop-v${version}-build.${GITHUB_RUN_ID}"
           fi
-          printf '安装包对应提交：%s\n\nMac：下载对应架构的 bundle.zip，解压后按使用说明安装。签名版本直接下载 DMG。\nWindows：下载 EXE 安装。\n\n签名模式：%s。SHA-256 校验文件与安装包一同提供。\n' "$GITHUB_SHA" "$DESKTOP_SIGNING" > release-notes.md
+          printf 'Light 包为远程轻客户端（未签名），不含本地购票服务；普通包仍可独立运行。\n\n安装包对应提交：%s\n\nMac：下载对应架构的 bundle.zip，解压后按使用说明安装。签名版本直接下载 DMG。\nWindows：下载 EXE 安装。\n\n签名模式：%s。SHA-256 校验文件与安装包一同提供。\n' "$GITHUB_SHA" "$DESKTOP_SIGNING" > release-notes.md
           flags=()
           if [[ "$DESKTOP_SIGNING" == unsigned ]]; then flags+=(--prerelease); fi
           if ! gh release view "$tag" >/dev/null 2>&1; then

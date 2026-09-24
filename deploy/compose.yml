@@ -1,0 +1,38 @@
+name: my12306
+services:
+  my12306:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: my12306-server:local
+    init: true
+    restart: unless-stopped
+    shm_size: 512m
+    env_file: .env
+    environment:
+      MY12306_MULTI_USER: '1'
+      MY12306_SECURE_COOKIE: '1'
+    volumes:
+      - ./data:/data
+    networks: [default]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:7788/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging: { driver: local }
+  gateway:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    ports:
+      - '${GATEWAY_BIND:-127.0.0.1}:4200:4200'
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./gateway/proxy-common.conf:/etc/nginx/proxy-common.conf:ro
+      - ./gateway/index.html:/usr/share/nginx/html/index.html:ro
+    networks: [default, prefect]
+    logging: { driver: local }
+networks:
+  prefect:
+    external: true
+    name: awpipeline-prefect_default

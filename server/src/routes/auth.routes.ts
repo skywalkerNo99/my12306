@@ -15,6 +15,8 @@ const token = (r: FastifyRequest) => (r.headers.cookie || '').split(';').map(s =
 const password = z.string().min(12).refine(s => Buffer.byteLength(s) <= 72, '密码最多 72 字节');
 const username = z.string().regex(/^[a-zA-Z0-9_.-]{3,40}$/);
 const logger = new Logger('auth');
+const cookiePath = process.env.MY12306_COOKIE_PATH || '/';
+if (!/^\/[a-zA-Z0-9/_-]*$/.test(cookiePath)) throw new Error('Invalid cookie path');
 export function currentUser(request?: FastifyRequest): AuthUser {
   if (!MULTI_USER) return UsersRepo.findById(SYSTEM_USER_ID) ?? UsersRepo.createBuiltIn(SYSTEM_USER_ID);
   if (!request?.authUser) throw Object.assign(new Error('请先登录管理台'), { statusCode: 401 });
@@ -62,13 +64,13 @@ export function registerAuth(app: FastifyInstance): void {
     const sessionToken = randomBytes(32).toString('hex');
     getDb().prepare('DELETE FROM auth_sessions WHERE expires_at <= ?').run(now);
     getDb().prepare('INSERT INTO auth_sessions VALUES (?, ?, ?)').run(hash(sessionToken), user.id, now + 7 * 86400_000);
-    reply.header('Set-Cookie', `my12306_session=${sessionToken}; Path=/; HttpOnly; SameSite=Strict; Max-Age=604800${(request.protocol === 'https' || process.env.MY12306_SECURE_COOKIE === '1') ? '; Secure' : ''}`);
+    reply.header('Set-Cookie', `my12306_session=${sessionToken}; Path=${cookiePath}; HttpOnly; SameSite=Strict; Max-Age=604800${(request.protocol === 'https' || process.env.MY12306_SECURE_COOKIE === '1') ? '; Secure' : ''}`);
     logger.info('管理台登录成功', { userId: user.id });
     return UsersRepo.findById(user.id);
   });
   app.post('/api/auth/logout', async (request, reply) => {
     if (MULTI_USER) { getDb().prepare('DELETE FROM auth_sessions WHERE token_hash = ?').run(hash(token(request))); wsHub.disconnectUser(currentUser(request).id); }
-    reply.header('Set-Cookie', 'my12306_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0');
+    reply.header('Set-Cookie', `my12306_session=; Path=${cookiePath}; HttpOnly; SameSite=Strict; Max-Age=0`);
     return { ok: true };
   });
   app.post('/api/auth/password', async (request, reply) => {
