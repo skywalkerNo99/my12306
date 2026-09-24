@@ -1,4 +1,4 @@
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref, watch, type Ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import type { Router } from 'vue-router';
 import {
@@ -43,7 +43,7 @@ interface PreviewEntry {
 }
 export interface DraftLeg { trainCode: string; fromStation: string; toStation: string; date: string; seatTypes?: string[] }
 
-export function usePlanEditor(deps: { passengers: { value: Passenger[] }; reload: () => Promise<void> }) {
+export function usePlanEditor(deps: { passengers: Ref<Passenger[]>; reload: () => Promise<void> }) {
   const passengers = deps.passengers;
   /** 席别选项（后端来自 12306 余票字段映射） */
   const seatTypeOptions = ref<SeatTypeOption[]>([]);
@@ -543,7 +543,7 @@ export function usePlanEditor(deps: { passengers: { value: Passenger[] }; reload
   }
 
   return reactive({
-    seatTypeOptions, seatTypeName, dialogVisible, draftLegs, previewVisible, previewRows, editing,
+    passengers, seatTypeOptions, seatTypeName, dialogVisible, draftLegs, previewVisible, previewRows, editing,
     pvMonth, WEEK_LABELS, pvTitle, pvMonthEntries, pvCells, pvShift, pvCalendarPending, pvHolidayOf, pvToFirst,
     weekdayNames, seatOptions, seatPositionHint, searchStations, trainSearchVisible, selectedTrainCodes,
     selectedTrainSegments, selectedTrainCount, segmentKey, isTrainSelected, clearTrainSelection, trainLoading,

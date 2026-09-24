@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import type { usePlanEditor } from './use-plan-editor';
+import type { usePlanDetail } from './use-plan-detail';
 import CalendarDayHeader from '../../components/CalendarDayHeader.vue';
 import PlanScheduleCalendar from '../../components/PlanScheduleCalendar.vue';
 import { saleLabel } from '../../utils/plan-status';
 import { sessionSyncing, syncPassengers } from '../../store/session';
 import { todayCn, isPastDate } from '../../utils/time';
 
-defineProps<{ editor: Record<string, any>; detail: Record<string, any> }>();
+defineProps<{ editor: ReturnType<typeof usePlanEditor>; detail: ReturnType<typeof usePlanDetail> }>();
 </script>
 
 <template>
