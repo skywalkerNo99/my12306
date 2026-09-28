@@ -88,3 +88,12 @@ test('sale clock is not attached to the travel date, and order dates use Beijing
  assert.equal(saleAtFromApi('2026-09-28','2026-09-14 08:00'),'2026-09-14T08:00:00+08:00');
  assert.equal(fmtDay(new Date('2026-09-21T16:01:00Z')),'2026-09-22');
 });
+
+test('arrival accepts the official local arrival field and falls back when it is empty', () => {
+ const local = ticket({stationTrainDTO:{arrive_time_local:'1970-01-01 18:32:00',arrive_time:''}});
+ assert.equal(normalizeOrders([{sequence_no:'LOCAL',tickets:[local]}],[])[0].arrivalDateTime,'2026-09-24 18:32');
+ const overnight = ticket({stationTrainDTO:{arrive_time_local:'2026-09-26 06:15:00',arrive_time:'1970-01-01 06:15:00'}});
+ assert.equal(normalizeOrders([{sequence_no:'LOCAL',tickets:[overnight]}],[])[0].arrivalDateTime,'2026-09-26 06:15');
+ const fallback = ticket({stationTrainDTO:{arrive_time_local:'',arrive_time:'18:32'}});
+ assert.equal(normalizeOrders([{sequence_no:'LOCAL',tickets:[fallback]}],[])[0].arrivalDateTime,'2026-09-24 18:32');
+});

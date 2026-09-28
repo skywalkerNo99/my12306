@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import CalendarTicket from '../components/CalendarTicket.vue';
 import CalendarDayHeader from '../components/CalendarDayHeader.vue';
 import { CALENDAR_WEEK_LABELS } from '../utils/calendar-day';
 import ShareImageDialog from '../components/ShareImageDialog.vue';
@@ -430,6 +431,7 @@ function onVisible(): void {
                 @keydown.enter="openDay(cell)"
               >
                 <CalendarDayHeader :date="cell.date" :holiday="cell.hol" :today="cell.isToday" />
+                <CalendarTicket v-for="(ticket, index) in cell.tickets" :key="index" :ticket="ticket" />
                 <div v-for="line in statusLines(cell.tickets)" :key="line.name" class="cal-status">{{ line.name }} {{ line.count }}</div>
               </div>
               <div v-else class="cal-cell cal-blank" />
