@@ -102,7 +102,7 @@ function clockOf(raw: string): { hh: string; mi: string } | null {
  * 12306 常把到达时刻放在 1970-01-01 上，或只给 HH:mm：丢掉占位日期，用乘车日拼时刻；早于出发则算次日。
  */
 function arrivalDateTime(ticket: RawTicket): string | null {
-  const raw = String(ticket.stationTrainDTO?.arrive_time ?? '').trim();
+  const raw = String(ticket.stationTrainDTO?.arrive_time_local || ticket.stationTrainDTO?.arrive_time || '').trim();
   const depart = normDateTime(ticket.start_train_date_page ?? ticket.train_date);
   const dm = /^(\d{4}-\d{2}-\d{2}) (\d{2}):(\d{2})$/.exec(depart);
   const dated = validBeijing(normDateTime(raw));

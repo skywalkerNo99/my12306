@@ -57,6 +57,8 @@ export interface RawTicket {
   stationTrainDTO?: {
     /** 到达日期时间（北京时间），如 2026-09-25 18:32 */
     arrive_time?: string;
+    /** 新版订单页优先使用的本地到达时间 */
+    arrive_time_local?: string;
     station_train_code?: string;
     from_station_name?: string;
     to_station_name?: string;
